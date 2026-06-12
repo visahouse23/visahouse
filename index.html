@@ -699,11 +699,25 @@ function save(){
     });
   },800);
 }
+function ensureCFGDefaults(){
+  // Make sure CFG always has all required arrays/fields
+  if(!CFG.staff||!CFG.staff.length)CFG.staff=DFLT.staff.slice();
+  if(!CFG.agencies||!CFG.agencies.length)CFG.agencies=JSON.parse(JSON.stringify(DFLT.agencies));
+  if(!CFG.services||!CFG.services.length)CFG.services=DFLT.services.slice();
+  if(!CFG.passports||!CFG.passports.length)CFG.passports=DFLT.passports.slice();
+  if(!CFG.expcats||!CFG.expcats.length)CFG.expcats=DFLT.expcats.slice();
+  if(!CFG.exRates||!CFG.exRates.length)CFG.exRates=['21500 kip/usd','3500 kip/thb','0.028 usd/thb','33 thb/usd'];
+  if(!CFG.pwAdmin)CFG.pwAdmin='admin123';
+  if(!CFG.pwStaff)CFG.pwStaff='staff123';
+  if(!CFG.adminFee)CFG.adminFee=2;
+  if(!CFG.commRate)CFG.commRate=20;
+}
 function loadLocal(){
   try{
     var d=localStorage.getItem('vh9');
     if(d){var p=JSON.parse(d);D=p.D||D;CFG=Object.assign({pwAdmin:'admin123',pwStaff:'staff123',adminFee:2,commRate:20,exRates:['21500 kip/usd','3500 kip/thb','0.028 usd/thb','33 thb/usd','20000 kip/usd','22000 kip/usd']},p.CFG||CFG);}
   }catch(e){}
+  ensureCFGDefaults();
 }
 function loadFromFirebase(callback){
   showSyncStatus('loading');
@@ -730,9 +744,10 @@ function loadFromFirebase(callback){
     }
     D=data.D||D;
     CFG=Object.assign({pwAdmin:'admin123',pwStaff:'staff123',adminFee:2,commRate:20,exRates:['21500 kip/usd','3500 kip/thb','0.028 usd/thb','33 thb/usd','20000 kip/usd','22000 kip/usd']},data.CFG||CFG);
+    ensureCFGDefaults();
     try{localStorage.setItem('vh9',JSON.stringify({D:D,CFG:CFG}));}catch(e){}
     showSyncStatus('synced');
-    popDDs(); // refresh dropdowns with loaded data
+    popDDs();
     if(callback)callback();
   });
 }
@@ -740,19 +755,26 @@ function loadFromFirebase(callback){
 var syncInterval = null;
 var lastSyncHash = '';
 function startRealtimeSync(){
-  // Poll Firebase every 10 seconds for changes from other devices
+  var failCount=0;
   if(syncInterval)clearInterval(syncInterval);
   syncInterval=setInterval(function(){
     if(isSyncing)return;
     fbGet(function(err,data){
-      if(err||!data)return;
+      if(err){failCount++;if(failCount>=3){clearInterval(syncInterval);showSyncStatus('offline');}return;}
+      failCount=0;
+      if(!data)return;
       var hash=JSON.stringify(data).length+'|'+(data.D&&data.D.entries?data.D.entries.length:0)+'|'+(data.D&&data.D.customers?data.D.customers.length:0);
       if(hash!==lastSyncHash){
         lastSyncHash=hash;
-        D=data.D||D;
-        CFG=Object.assign({pwAdmin:'admin123',pwStaff:'staff123',adminFee:2,commRate:20,exRates:['21500 kip/usd','3500 kip/thb','0.028 usd/thb','33 thb/usd','20000 kip/usd','22000 kip/usd']},data.CFG||CFG);
-        try{localStorage.setItem('vh9',JSON.stringify({D:D,CFG:CFG}));}catch(e){}
-        refreshCurrentPage();
+        // Only update if Firebase has same or more entries (prevent overwrite of new local data)
+        var fbEntries=(data.D&&data.D.entries)?data.D.entries.length:0;
+        var localEntries=D.entries?D.entries.length:0;
+        if(fbEntries>=localEntries){
+          D=data.D||D;
+          CFG=Object.assign({pwAdmin:'admin123',pwStaff:'staff123',adminFee:2,commRate:20,exRates:['21500 kip/usd','3500 kip/thb','0.028 usd/thb','33 thb/usd','20000 kip/usd','22000 kip/usd']},data.CFG||CFG);
+          try{localStorage.setItem('vh9',JSON.stringify({D:D,CFG:CFG}));}catch(e){}
+          refreshCurrentPage();
+        }
         showSyncStatus('synced');
         // refresh settings lists if visible
         var settPg = document.getElementById('pg-settings');
@@ -918,8 +940,6 @@ function doLogin(){
     popDDs(); // refresh with Firebase data
     if(currentRole==='admin'){showPg('dashboard',document.getElementById('ni-dashboard'));}
     else{showPg('ledger',document.getElementById('ni-ledger'));}
-    // Also refresh settings lists if on settings page
-    if(document.getElementById('ls-staff'))renderSettings();
     startRealtimeSync();
   });
 }
