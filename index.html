@@ -721,7 +721,12 @@ function loadLocal(){
 }
 function loadFromFirebase(callback){
   showSyncStatus('loading');
+  // Timeout: if Firebase doesn't respond in 5 seconds, go offline
+  var loadTimeout=setTimeout(function(){
+    showSyncStatus('offline');
+  },5000);
   fbGet(function(err,data){
+    clearTimeout(loadTimeout);
     if(err){
       var msg=err.message||'';
       if(msg.indexOf('fetch')!==-1){
@@ -1718,10 +1723,17 @@ document.getElementById('edit-exp-modal').addEventListener('click',function(e){i
 
 // ── SETTINGS ──
 function renderSettings(){
-  document.getElementById('rate-admin').value=CFG.adminFee||2;document.getElementById('rate-admin-cur').textContent=CFG.adminFee||2;
-  document.getElementById('rate-comm').value=CFG.commRate||20;document.getElementById('rate-comm-cur').textContent=CFG.commRate||20;
-  renderSList('staff','ls-staff');renderAgList();renderSList('services','ls-services');
-  renderSList('passports','ls-pass');renderSList('expcats','ls-expcats');renderExRateList();
+  ensureCFGDefaults();
+  try{document.getElementById('rate-admin').value=CFG.adminFee||2;}catch(e){}
+  try{document.getElementById('rate-admin-cur').textContent=CFG.adminFee||2;}catch(e){}
+  try{document.getElementById('rate-comm').value=CFG.commRate||20;}catch(e){}
+  try{document.getElementById('rate-comm-cur').textContent=CFG.commRate||20;}catch(e){}
+  renderSList('staff','ls-staff');
+  renderAgList();
+  renderSList('services','ls-services');
+  renderSList('passports','ls-pass');
+  renderSList('expcats','ls-expcats');
+  renderExRateList();
 }
 function renderSList(key,elId){
   var el=document.getElementById(elId);if(!el)return;el.innerHTML='';
