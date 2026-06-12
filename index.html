@@ -370,7 +370,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
           <select id="t-view" class="si" style="width:95px" onchange="renderTracker()"><option value="cards">Cards</option><option value="table">Table</option></select>
         </div>
         <div class="sg" style="margin-bottom:12px">
-          <div class="sc"><div class="sl">Total sale</div><div class="sv iv" id="tr-tot">$0</div></div>
+          <div class="sc admin-only"><div class="sl">Total sale</div><div class="sv iv" id="tr-tot">$0</div></div>
           <div class="sc"><div class="sl">Total deposited</div><div class="sv" style="color:var(--ac)" id="tr-dep">$0</div></div>
           <div class="sc"><div class="sl">Customer balance due</div><div class="sv bdue" id="tr-bal">$0</div></div>
           <div class="sc"><div class="sl">Agency not paid</div><div class="sv" style="color:var(--wn)" id="tr-agpend">$0</div></div>
@@ -1371,7 +1371,7 @@ function renderTracker(){
   if(q)list=list.filter(function(c){return c.name.toLowerCase().includes(q.toLowerCase())||(c.inv||'').toLowerCase().includes(q.toLowerCase());});
   var totSale=0,totDep=0,totBal=0,totAgPend=0,doneCnt=0,oweCnt=0;
   list.forEach(function(c){var cc=custCalc(c);totSale+=cc.sale;totDep+=cc.deposited;if(cc.allDone)doneCnt++;else{oweCnt++;totBal+=cc.balance;}if(!cc.agencyDone)totAgPend+=Math.max(0,cc.payAg-cc.agPaid);});
-  document.getElementById('tr-tot').textContent=fU(totSale);
+  if(document.getElementById('tr-tot')){document.getElementById('tr-tot').textContent=fU(totSale);document.getElementById('tr-tot').closest('.sc').style.display=currentRole==='admin'?'':'none';}
   document.getElementById('tr-dep').textContent=fU(totDep);
   document.getElementById('tr-bal').textContent=fU(totBal);
   document.getElementById('tr-agpend').textContent=fU(totAgPend);
@@ -1426,11 +1426,12 @@ function renderTracker(){
           +(currentRole==='admin'?'<div class="cust-col"><div class="cust-col-label">Sale (total)</div><div class="cust-col-val iv">'+fU(cc.sale)+'</div></div>':'')
           +'<div class="cust-col"><div class="cust-col-label">Deposited</div><div class="cust-col-val" style="color:var(--ac)">'+fU(cc.deposited)+'</div></div>'
           +'<div class="cust-col"><div class="cust-col-label">Balance left</div><div class="cust-col-val '+(cc.custDone?'bdone':'bdue')+'">'+(cc.custDone?'Done':fU(cc.balance))+'</div></div>'
-          +'<div class="cust-col"><div class="cust-col-label">Agency cost</div><div class="cust-col-val ov">'+fU(c.cost||0)+'</div></div>';
+          +'<div class="cust-col"><div class="cust-col-label">Agency cost</div><div class="cust-col-val ov">'+fU(c.cost||0)+'</div></div>'
+          +'<div class="cust-col"><div class="cust-col-label">Agency paid</div><div class="cust-col-val '+(cc.agencyDone?'bdone':cc.agPaid>0?'pla':'bdue')+'">'+fU(cc.agPaid)+(cc.agencyDone?' ✓':' / '+fU(c.cost||0))+'</div></div>';
         body.innerHTML+=
           '<div class="prog-row"><span class="prog-label">Customer paid</span><div class="prog-bar-wrap"><div class="prog-bar-fill" style="width:'+pct+'%;background:'+pcol+'"></div></div><span class="prog-pct" style="color:'+pcol+'">'+pct+'%</span></div>'
-          +'<div class="prog-row"><span class="prog-label">Agency pay</span><div class="prog-bar-wrap"><div class="prog-bar-fill" style="width:'+agPct+'%;background:'+(cc.agencyDone?'var(--ac2)':'var(--dg)')+'"></div></div>'
-            +'<span class="apbadge '+(cc.agencyDone?'apyes':'apno')+'">'+(cc.agencyDone?'Paid '+fU(cc.agPaid):'Unpaid')+'</span>'
+          +'<div class="prog-row"><span class="prog-label">Agency pay</span><div class="prog-bar-wrap"><div class="prog-bar-fill" style="width:'+agPct+'%;background:'+(cc.agencyDone?'var(--ac2)':agPct>0?'var(--wn)':'var(--dg)')+'"></div></div>'
+            +'<span class="apbadge '+(cc.agencyDone?'apyes':cc.agPaid>0?'':'apno')+'">'+(c.cost>0?(cc.agencyDone?'✓ Paid '+fU(cc.agPaid):'Paid '+fU(cc.agPaid)+' / Cost '+fU(c.cost||0)):'No agency')+'</span>'
           +'</div>';
         card.appendChild(hdr);card.appendChild(body);con.appendChild(card);
       });
@@ -1446,293 +1447,4 @@ function renderTracker(){
           +'<td class="iv">'+fU(cc.deposited)+'</td>'
           +'<td class="'+(cc.custDone?'bdone':'bdue')+'">'+(cc.custDone?'Done':fU(cc.balance))+'</td>'
           +'<td>'+(c.agency||'-')+'</td><td class="ov">'+fU(c.cost||0)+'</td>'
-          +'<td class="'+(cc.agencyDone?'bdone':'bdue')+'">'+fU(cc.agPaid)+'</td>'
-          +'<td>'+(c.staff||'-')+'</td>'
-          +'<td><span class="pl '+(SM2[c.status]||'plgr')+'">'+c.status+'</span></td>'
-          +'<td><span class="apbadge '+(cc.allDone?'apyes':'apno')+'">'+(cc.allDone?'All Done':'Pending')+'</span></td>'
-          +'<td style="white-space:nowrap">'+eBtn+'<button class="btn bo bsm" onclick="openMod('+c.id+')">View</button></td></tr>';
-      });
-      tbl.innerHTML='<table><thead><tr><th>Date</th><th>Invoice</th><th>Name</th><th>Service</th><th>Deposited</th><th>Balance</th><th>Agency</th><th>Agency cost</th><th>Agency paid</th><th>Staff</th><th>Status</th><th>Payment</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>';
-      con.innerHTML='';con.appendChild(tbl);
-    }
-  }
-
-// ── TRACKER MODAL ──
-function openMod(id){
-  modCid=id;
-  var c=D.customers.find(function(c){return c.id===id;});if(!c)return;
-  document.getElementById('m-title').textContent=c.name+' — '+c.inv;
-  document.getElementById('m-vstatus').value=c.status;
-  document.getElementById('m-agpaid').value=c.agencyPaid?'yes':'no';
-  document.getElementById('m-notes').value=c.notes||'';
-  refMod(c);
-  document.getElementById('mod-bg').classList.add('open');
-}
-function refMod(c){
-  var cc=custCalc(c);
-  document.getElementById('m-sale').textContent=fU(cc.sale);
-  document.getElementById('m-dep').textContent=fU(cc.deposited);
-  document.getElementById('m-bal').textContent=cc.custDone?'Fully paid':fU(cc.balance);
-  document.getElementById('m-ag').textContent=(c.agency||'None')+' — Cost: '+fU(cc.agencyCost)+' Paid: '+fU(cc.agPaid)+(cc.agencyDone?' ✓':' (unpaid: '+fU(Math.max(0,cc.agencyCost-cc.agPaid))+')');
-  var h=document.getElementById('m-hist');h.innerHTML='';
-  var allPays=cc.payments.map(function(e){return{date:e.date,amt:e.amt,desc:e.desc,staff:e.staff,type:'customer'};});
-  var allAg=cc.agPayments.map(function(e){return{date:e.date,amt:e.amt,desc:e.desc,staff:e.staff,type:'agency'};});
-  var all=allPays.concat(allAg).sort(function(a,b){return a.date.localeCompare(b.date);});
-  if(!all.length){h.innerHTML='<div style="color:var(--tx3);font-size:12px;padding:10px">No payments yet. Use Daily Entry with this invoice number.</div>';return;}
-  all.forEach(function(e){
-    var div=document.createElement('div');div.className='pi';
-    div.innerHTML='<span class="pl '+(e.type==='customer'?'plb':'pla')+'">'+e.type+'</span><span>'+e.date+'</span><span class="'+(e.type==='customer'?'iv':'ov')+'">'+fU(e.amt)+'</span><span style="color:var(--tx2);font-size:11px">'+(e.desc||'')+'</span><span style="color:var(--tx3)">'+(e.staff||'')+'</span>';
-    h.appendChild(div);
-  });
-}
-function closeMod(){document.getElementById('mod-bg').classList.remove('open');modCid=null;}
-function updCust(){var c=D.customers.find(function(c){return c.id===modCid;});if(!c)return;c.status=document.getElementById('m-vstatus').value;c.agencyPaid=document.getElementById('m-agpaid').value==='yes';c.notes=document.getElementById('m-notes').value;save();renderTracker();renderCustList();closeMod();}
-function markDone(){var c=D.customers.find(function(c){return c.id===modCid;});if(!c)return;c.manualDone=true;save();refMod(c);renderTracker();showToast('Marked fully paid!');}
-document.getElementById('mod-bg').addEventListener('click',function(e){if(e.target===this)closeMod();});
-
-// ── AGENCIES ──
-function addAg(){
-  var name=document.getElementById('ag-name').value.trim();if(!name)return alert('Enter name.');
-  if(CFG.agencies.find(function(a){return a.name===name;})){alert('Already exists.');return;}
-  CFG.agencies.push({name:name,comm:parseFloat(document.getElementById('ag-comm').value)||0,contact:document.getElementById('ag-contact').value,phone:document.getElementById('ag-phone').value,notes:document.getElementById('ag-notes').value});
-  save();renderAg();popDDs();['ag-name','ag-contact','ag-phone','ag-comm','ag-notes'].forEach(function(id){document.getElementById(id).value='';});
-}
-function renderAg(){
-  var b=document.getElementById('ag-body');
-  if(!CFG.agencies.length){b.innerHTML='<tr><td colspan="8"><div class="empty">No agencies.</div></td></tr>';return;}
-  b.innerHTML='';
-  CFG.agencies.forEach(function(a,i){
-    var custs=D.customers.filter(function(c){return c.agency===a.name;});
-    var tot=custs.reduce(function(s,c){return s+Number(c.cost||0);},0);
-    var tr=document.createElement('tr');
-    tr.innerHTML='<td><strong>'+a.name+'</strong></td><td>'+(a.contact||'-')+'</td><td>'+(a.phone||'-')+'</td>'
-      +'<td><input type="number" value="'+(a.comm||0)+'" style="width:55px;background:var(--bg3);border:1px solid var(--br2);border-radius:4px;padding:3px 6px;color:var(--tx);font-size:12px" onchange="updAgComm('+i+',this.value)">%</td>'
-      +'<td><span class="pl plb">'+custs.length+'</span></td><td class="ov">'+fU(tot)+'</td><td>'+(a.notes||'-')+'</td>'
-      +'<td><button class="btn bd" onclick="delAg('+i+')">X</button></td>';
-    b.appendChild(tr);
-  });
-}
-function updAgComm(i,v){CFG.agencies[i].comm=parseFloat(v)||0;save();}
-function delAg(i){if(confirm('Remove?')){CFG.agencies.splice(i,1);save();renderAg();popDDs();renderSettings();}}
-
-// ── COMMISSION ──
-function renderComm(){
-  var pr=gP(commP,'cf','ct');
-  var sf=(document.getElementById('cm-sf')||{}).value||'';
-  var doneOnly=(document.getElementById('cm-done-filter')||{}).value||'done';
-  var allList=D.customers.filter(function(c){return inP(c.date,pr.fr,pr.to);});
-  if(sf)allList=allList.filter(function(c){return c.staff===sf;});
-  var list=doneOnly==='all'?allList:allList.filter(function(c){return custCalc(c).allDone;});
-  var pendingList=allList.filter(function(c){return!custCalc(c).allDone;});
-  var bySt={};
-  list.forEach(function(c){
-    var st=c.staff||'Unassigned';
-    if(!bySt[st])bySt[st]={custs:[],sale:0,payAg:0,profit:0,admin:0,net:0,comm:0};
-    var cc=custCalc(c);
-    bySt[st].custs.push(c);bySt[st].sale+=cc.sale;bySt[st].payAg+=cc.agencyCost;bySt[st].profit+=cc.profit;bySt[st].admin+=cc.admin;bySt[st].net+=cc.net;bySt[st].comm+=cc.comm;
-  });
-  var cols=['var(--ac)','var(--ac2)','var(--wn)','var(--pu)','#f87171','#34d399'];
-  var names=Object.keys(bySt);
-  var cardsEl=document.getElementById('comm-cards');cardsEl.innerHTML='';
-  names.forEach(function(name,i){
-    var s=bySt[name];var col=cols[i%cols.length];var ini=name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
-    var div=document.createElement('div');div.className='scd';
-    div.innerHTML='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:13px;font-weight:700"><div style="width:28px;height:28px;border-radius:50%;background:'+col+'22;color:'+col+';font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">'+ini+'</div>'+name+'<span class="pl plg" style="margin-left:auto">'+s.custs.length+' done</span></div>'
-      +'<div class="cr"><span class="ck">Sale total</span><span class="iv">'+fU(s.sale)+'</span></div>'
-      +'<div class="cr"><span class="ck">Agency cost</span><span class="ov">'+fU(s.payAg)+'</span></div>'
-      +'<div class="cr"><span class="ck">Profit</span><span class="prv">'+fU(s.profit)+'</span></div>'
-      +'<div class="cr"><span class="ck">Admin '+CFG.adminFee+'%</span><span style="color:var(--tx2)">-'+fU(s.admin)+'</span></div>'
-      +'<div class="cr"><span class="ck">Net profit</span><span style="color:var(--ac2)">'+fU(s.net)+'</span></div>'
-      +'<div class="cr"><span class="ck">Commission '+CFG.commRate+'%</span><span class="cv" style="font-size:16px">'+fU(s.comm)+'</span></div>';
-    cardsEl.appendChild(div);
-  });
-  if(!names.length)cardsEl.innerHTML='<div style="color:var(--tx3);padding:16px">No completed customers.</div>';
-  var gt=Object.values(bySt).reduce(function(a,s){a.sale+=s.sale;a.payAg+=s.payAg;a.profit+=s.profit;a.admin+=s.admin;a.net+=s.net;a.comm+=s.comm;return a;},{sale:0,payAg:0,profit:0,admin:0,net:0,comm:0});
-  document.getElementById('comm-gt').innerHTML='<div class="sc"><div class="sl">Total sale</div><div class="sv iv" style="font-size:15px">'+fU(gt.sale)+'</div></div><div class="sc"><div class="sl">Agency cost</div><div class="sv ov" style="font-size:15px">'+fU(gt.payAg)+'</div></div><div class="sc"><div class="sl">Profit</div><div class="sv prv" style="font-size:15px">'+fU(gt.profit)+'</div></div><div class="sc"><div class="sl">Admin</div><div class="sv" style="font-size:15px;color:var(--tx2)">-'+fU(gt.admin)+'</div></div><div class="sc"><div class="sl">Net profit</div><div class="sv" style="font-size:15px;color:var(--ac2)">'+fU(gt.net)+'</div></div><div class="sc"><div class="sl">Commission</div><div class="sv cv" style="font-size:15px">'+fU(gt.comm)+'</div></div>';
-  var tb=document.getElementById('comm-tbl');tb.innerHTML='';
-  list.forEach(function(c){var cc=custCalc(c);var tr=document.createElement('tr');tr.innerHTML='<td>'+c.date+'</td><td><span class="tag">'+c.inv+'</span></td><td><strong>'+c.name+'</strong></td><td style="font-size:11px">'+(c.service||'-')+'</td><td>'+(c.staff||'-')+'</td><td class="iv">'+fU(cc.sale)+'</td><td class="ov">'+fU(cc.agencyCost)+'</td><td class="prv">'+fU(cc.profit)+'</td><td style="color:var(--tx2)">-'+fU(cc.admin)+'</td><td style="color:var(--ac2);font-weight:600">'+fU(cc.net)+'</td><td class="cv">'+fU(cc.comm)+'</td><td><span class="pl plg">Done</span></td>';tb.appendChild(tr);});
-  pendingList.forEach(function(c){var cc=custCalc(c);var tr=document.createElement('tr');tr.style.opacity='0.45';tr.innerHTML='<td>'+c.date+'</td><td><span class="tag">'+c.inv+'</span></td><td><strong>'+c.name+'</strong></td><td style="font-size:11px">'+(c.service||'-')+'</td><td>'+(c.staff||'-')+'</td><td class="iv">'+fU(cc.sale)+'</td><td class="ov">'+fU(cc.agencyCost)+'</td><td class="prv">'+fU(cc.profit)+'</td><td style="color:var(--tx2)">-'+fU(cc.admin)+'</td><td style="color:var(--ac2)">'+fU(cc.net)+'</td><td style="color:var(--wn)">'+fU(cc.comm)+' (pending)</td><td><span class="pl pla">Pending</span></td>';tb.appendChild(tr);});
-  if(list.length||pendingList.length){var tot=document.createElement('tr');tot.className='trow';tot.innerHTML='<td colspan="5">TOTAL — done: '+list.length+', pending: '+pendingList.length+'</td><td class="iv">'+fU(gt.sale)+'</td><td class="ov">'+fU(gt.payAg)+'</td><td class="prv">'+fU(gt.profit)+'</td><td>-'+fU(gt.admin)+'</td><td style="color:var(--ac2)">'+fU(gt.net)+'</td><td class="cv">'+fU(gt.comm)+'</td><td></td>';tb.appendChild(tot);}
-}
-
-// ── SALARY ──
-function addSal(){
-  var name=document.getElementById('s-name').value;var amt=parseFloat(document.getElementById('s-amt').value);
-  if(!name||isNaN(amt)||amt<=0)return alert('Select staff and enter salary.');
-  D.salaries.push({id:Date.now(),name:name,role:document.getElementById('s-role').value,amt:amt,month:document.getElementById('s-month').value,status:document.getElementById('s-status').value});
-  save();renderSal();popDDs();document.getElementById('s-amt').value='';
-}
-function renderSal(){
-  var mf=(document.getElementById('sal-f')||{}).value||'all';
-  var list=mf==='all'?D.salaries:D.salaries.filter(function(s){return s.month===mf;});
-  document.getElementById('sal-tot').textContent='Total: '+fL(list.reduce(function(s,r){return s+r.amt;},0));
-  var b=document.getElementById('sal-body');if(!list.length){b.innerHTML='<tr><td colspan="6"><div class="empty">No records.</div></td></tr>';return;}
-  b.innerHTML='';
-  list.forEach(function(s){
-    var tr=document.createElement('tr');
-    var ss=document.createElement('select');ss.style.cssText='font-size:11px;padding:3px 6px;background:var(--bg3);border:1px solid var(--br2);border-radius:4px;color:var(--tx)';
-    ['pending','paid'].forEach(function(v){var o=document.createElement('option');o.value=v;o.textContent=v;if(v===s.status)o.selected=true;ss.appendChild(o);});
-    ss.onchange=(function(sid){return function(ev){var r=D.salaries.find(function(r){return r.id===sid;});if(r){r.status=ev.target.value;save();}};})(s.id);
-    var sc=document.createElement('td');sc.appendChild(ss);
-    var db=document.createElement('button');db.className='btn bd';db.textContent='X';
-    db.onclick=(function(sid){return function(){if(confirm('Delete?')){D.salaries=D.salaries.filter(function(r){return r.id!==sid;});save();renderSal();popDDs();}};})(s.id);
-    var ac=document.createElement('td');ac.appendChild(db);
-    tr.innerHTML='<td><strong>'+s.name+'</strong></td><td>'+s.role+'</td><td>'+(s.month||'-')+'</td><td>'+fL(s.amt)+'</td>';
-    tr.appendChild(sc);tr.appendChild(ac);b.appendChild(tr);
-  });
-}
-
-// ── EXPENSES ──
-function addExp(){
-  var date=document.getElementById('ex-date').value;var amt=parseFloat(document.getElementById('ex-amt').value);
-  if(!date||isNaN(amt)||amt<=0)return alert('Enter date and amount.');
-  D.expenses.push({id:Date.now(),date:date,cat:document.getElementById('ex-cat').value,desc:document.getElementById('ex-desc').value,amt:amt});
-  save();renderExp();document.getElementById('ex-desc').value='';document.getElementById('ex-amt').value='';
-}
-function renderExp(){
-  var pr=gP((document.getElementById('exp-f')||{}).value||'all','','');
-  var list=D.expenses.filter(function(e){return inP(e.date,pr.fr,pr.to);});
-  document.getElementById('exp-tot').textContent='Total: '+fL(list.reduce(function(s,e){return s+e.amt;},0));
-  var b=document.getElementById('exp-body');if(!list.length){b.innerHTML='<tr><td colspan="5"><div class="empty">No expenses.</div></td></tr>';return;}
-  b.innerHTML='';
-  list.slice().sort(function(a,b2){return b2.date.localeCompare(a.date);}).forEach(function(e){
-    var tr=document.createElement('tr');
-    var ac=document.createElement('td');ac.style.whiteSpace='nowrap';
-    if(currentRole==='admin'){
-      var eb=document.createElement('button');eb.className='btn bw bsm';eb.style.marginRight='4px';eb.textContent='✏';
-      eb.onclick=(function(eid){return function(){openEditExp(eid);};})(e.id);ac.appendChild(eb);
-      var db=document.createElement('button');db.className='btn bd';db.textContent='X';
-      db.onclick=(function(eid){return function(){if(confirm('Delete?')){D.expenses=D.expenses.filter(function(ex){return ex.id!==eid;});save();renderExp();}};})(e.id);ac.appendChild(db);
-    }
-    tr.innerHTML='<td>'+e.date+'</td><td><span class="tag">'+e.cat+'</span></td><td>'+(e.desc||'-')+'</td><td class="ov">'+fL(e.amt)+'</td>';
-    tr.appendChild(ac);b.appendChild(tr);
-  });
-}
-function openEditExp(id){
-  var e=D.expenses.find(function(e){return e.id===id;});if(!e)return;
-  document.getElementById('exp-edit-id').value=id;
-  document.getElementById('exp-edit-date').value=e.date;
-  document.getElementById('exp-edit-desc').value=e.desc||'';
-  document.getElementById('exp-edit-amt').value=e.amt;
-  var el=document.getElementById('exp-edit-cat');
-  el.innerHTML=CFG.expcats.map(function(c){return'<option'+(c===e.cat?' selected':'')+'>'+c+'</option>';}).join('');
-  document.getElementById('edit-exp-modal').classList.add('open');
-}
-function saveEditExp(){
-  var id=parseInt(document.getElementById('exp-edit-id').value);
-  var e=D.expenses.find(function(e){return e.id===id;});if(!e)return;
-  var amt=parseFloat(document.getElementById('exp-edit-amt').value);
-  if(isNaN(amt)||amt<=0){alert('Enter valid amount.');return;}
-  e.date=document.getElementById('exp-edit-date').value;
-  e.cat=document.getElementById('exp-edit-cat').value;
-  e.desc=document.getElementById('exp-edit-desc').value;
-  e.amt=amt;
-  save();closeEditExp();renderExp();showToast('Expense updated!');
-}
-function closeEditExp(){document.getElementById('edit-exp-modal').classList.remove('open');}
-document.getElementById('edit-exp-modal').addEventListener('click',function(e){if(e.target===this)closeEditExp();});
-
-// ── SETTINGS ──
-function renderSettings(){
-  document.getElementById('rate-admin').value=CFG.adminFee||2;
-  document.getElementById('rate-admin-cur').textContent=CFG.adminFee||2;
-  document.getElementById('rate-comm').value=CFG.commRate||20;
-  document.getElementById('rate-comm-cur').textContent=CFG.commRate||20;
-  renderSList('staff','ls-staff');
-  renderAgList();
-  renderSList('services','ls-services');
-  renderSList('passports','ls-pass');
-  renderSList('expcats','ls-expcats');
-  renderExRateList();
-}
-function renderSList(key,elId){
-  var el=document.getElementById(elId);if(!el)return;el.innerHTML='';
-  var kmap={staff:'ls-staff',services:'ls-services',passports:'ls-pass',expcats:'ls-expcats'};
-  CFG[key].forEach(function(item,i){
-    var div=document.createElement('div');div.className='ssi';
-    var span=document.createElement('span');span.style.flex='1';span.textContent=item;
-    var btn=document.createElement('button');btn.className='btn bd bsm';btn.textContent='X';
-    btn.onclick=(function(k,idx){return function(){if(confirm('Remove?')){CFG[k].splice(idx,1);save();renderSList(k,kmap[k]);popDDs();}};})(key,i);
-    div.appendChild(span);div.appendChild(btn);el.appendChild(div);
-  });
-}
-function renderAgList(){
-  var el=document.getElementById('ls-agencies');if(!el)return;el.innerHTML='';
-  CFG.agencies.forEach(function(a,i){
-    var div=document.createElement('div');div.className='ssi';
-    var span=document.createElement('span');span.style.flex='1';span.textContent=a.name;
-    var inp=document.createElement('input');inp.type='number';inp.value=a.comm||0;inp.style.cssText='width:60px;background:var(--bg4);border:1px solid var(--br2);border-radius:4px;padding:3px 6px;color:var(--tx);font-size:11px;margin:0 4px';inp.title='Commission %';
-    inp.onchange=(function(idx){return function(ev){updAgComm(idx,ev.target.value);};})(i);
-    var pct=document.createElement('span');pct.textContent='%';pct.style.cssText='font-size:11px;color:var(--tx2);margin-right:4px';
-    var btn=document.createElement('button');btn.className='btn bd bsm';btn.textContent='X';
-    btn.onclick=(function(idx){return function(){delAg(idx);};})(i);
-    div.appendChild(span);div.appendChild(inp);div.appendChild(pct);div.appendChild(btn);el.appendChild(div);
-  });
-}
-function addI(key,inputId){
-  var v=document.getElementById(inputId).value.trim();
-  if(!v||CFG[key].includes(v))return alert(v?'Already exists.':'Enter a value.');
-  CFG[key].push(v);save();
-  var kmap={staff:'ls-staff',services:'ls-services',passports:'ls-pass',expcats:'ls-expcats'};
-  renderSList(key,kmap[key]);popDDs();document.getElementById(inputId).value='';
-}
-function addAgFromSettings(){
-  var name=document.getElementById('ns-ag-name').value.trim();var comm=parseFloat(document.getElementById('ns-ag-comm').value)||0;
-  if(!name)return alert('Enter agency name.');
-  if(CFG.agencies.find(function(a){return a.name===name;}))return alert('Already exists.');
-  CFG.agencies.push({name:name,comm:comm,contact:'',phone:'',notes:''});
-  save();renderAgList();popDDs();document.getElementById('ns-ag-name').value='';document.getElementById('ns-ag-comm').value='';
-}
-function renderExRateList(){
-  var el=document.getElementById('ls-exrates');if(!el)return;el.innerHTML='';
-  (CFG.exRates||[]).forEach(function(r,i){
-    var div=document.createElement('div');div.className='ssi';
-    var span=document.createElement('span');span.style.flex='1';span.textContent=r;
-    var btn=document.createElement('button');btn.className='btn bd bsm';btn.textContent='X';
-    btn.onclick=(function(idx){return function(){if(confirm('Remove?')){CFG.exRates.splice(idx,1);save();renderExRateList();popRateDDs();}};})(i);
-    div.appendChild(span);div.appendChild(btn);el.appendChild(div);
-  });
-}
-function addExRate(){
-  var v=document.getElementById('ns-exrate').value.trim();if(!v)return alert('Enter a rate.');
-  if(!CFG.exRates)CFG.exRates=[];
-  if(CFG.exRates.includes(v))return alert('Already exists.');
-  CFG.exRates.push(v);save();renderExRateList();popRateDDs();document.getElementById('ns-exrate').value='';
-}
-
-// ── DASHBOARD ──
-var cRev=null,cCust=null;
-function renderDash(){
-  var pr=gP(dashP,'df','dt');
-  if(dashP!=='custom'){document.getElementById('df').value=pr.fr;document.getElementById('dt').value=pr.to;}
-  var ents=D.entries.filter(function(e){return inP(e.date,pr.fr,pr.to);});
-  var lak=0;ents.forEach(function(e){var v=e.type==='in'?e.amt:-e.amt;if(e.cur==='LAK')lak+=v;});
-  document.getElementById('d-lak').textContent=fL(lak);
-  var custs=D.customers.filter(function(c){return inP(c.date,pr.fr,pr.to);});
-  var totRev=0,totBal=0,totAgPend=0,totNet=0,totPayAg=0,totComm=0;
-  custs.forEach(function(c){var cc=custCalc(c);totRev+=cc.deposited;if(!cc.custDone)totBal+=cc.balance;totNet+=cc.allDone?cc.net:0;totPayAg+=cc.agencyCost;if(!cc.agencyDone)totAgPend+=Math.max(0,cc.agencyCost-cc.agPaid);totComm+=cc.allDone?cc.comm:0;});
-  document.getElementById('d-rev').textContent=fU(totRev);
-  document.getElementById('d-bal').textContent=fU(totBal);
-  document.getElementById('d-agpend').textContent=fU(totAgPend);
-  document.getElementById('d-net').textContent=fU(totNet);
-  document.getElementById('d-comm').textContent=fU(totComm);
-  var sc={new:0,processing:0,submitted:0,approved:0,rejected:0};
-  D.customers.forEach(function(c){sc[c.status]=(sc[c.status]||0)+1;});
-  document.getElementById('ds-new').textContent=sc.new;document.getElementById('ds-proc').textContent=sc.processing;document.getElementById('ds-sub').textContent=sc.submitted;document.getElementById('ds-app').textContent=sc.approved;document.getElementById('ds-rej').textContent=sc.rejected;
-  var recent=ents.slice().sort(function(a,b){return b.date.localeCompare(a.date);}).slice(0,6);
-  var rb=document.getElementById('d-recent');rb.innerHTML='';
-  if(!recent.length){rb.innerHTML='<tr><td colspan="8"><div class="empty">No entries.</div></td></tr>';return;}
-  recent.forEach(function(e){var tr=document.createElement('tr');tr.innerHTML='<td>'+e.date+'</td><td>'+(e.inv?'<span class="tag">'+e.inv+'</span>':'-')+'</td><td>'+(e.custName||'-')+'</td><td>'+e.desc+'</td><td class="iv">'+(e.type==='in'?fA(e.amt,e.cur):'-')+'</td><td class="ov">'+(e.type==='out'?fA(e.amt,e.cur):'-')+'</td><td>'+e.cur+'</td><td>'+(e.staff||'-')+'</td>';rb.appendChild(tr);});
-  if(cRev)cRev.destroy();if(cCust)cCust.destroy();
-  cRev=new Chart(document.getElementById('c-rev').getContext('2d'),{type:'bar',data:{labels:['Revenue','Agency cost','Net profit'],datasets:[{data:[totRev,totPayAg,totNet],backgroundColor:['#38c98a','#e05555','#a78bfa'],borderRadius:8,borderSkipped:false,maxBarThickness:60}]},options:{plugins:{legend:{display:false}},scales:{y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#9aa0b8',callback:function(v){return'$'+Number(v).toFixed(0);}}},x:{grid:{display:false},ticks:{color:'#9aa0b8'}}},responsive:true}});
-  cCust=new Chart(document.getElementById('c-cust').getContext('2d'),{type:'doughnut',data:{labels:['New','Processing','Submitted','Approved','Rejected'],datasets:[{data:[sc.new,sc.processing,sc.submitted,sc.approved,sc.rejected],backgroundColor:['#4f8ef7','#f0a04b','#a78bfa','#38c98a','#e05555'],borderWidth:0,hoverOffset:6}]},options:{plugins:{legend:{position:'bottom',labels:{color:'#9aa0b8',font:{size:10},boxWidth:10,padding:8}}},responsive:true,cutout:'62%'}});
-}
-
-
-// Close modals on background click
-document.getElementById('edit-entry-modal').addEventListener('click',function(e){if(e.target===this)closeEditEntry();});
-document.getElementById('edit-cust-modal').addEventListener('click',function(e){if(e.target===this)closeEditCust();});
-document.getElementById('edit-exp-modal').addEventListener('click',function(e){if(e.target===this)closeEditExp();});
-</script>
-</body>
-</html>
+          +'<td class=\"'+(cc.agencyDone?'bdone':cc.agPaid>0?'pla':'bdue')+'\">'+fU(cc.agPaid)+(cc.agencyDone?' ✓':(c.cost>0?' / '+fU(c.cost||0):''))+'</td>\'\n
