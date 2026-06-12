@@ -377,7 +377,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
           <select id="t-view" class="si" style="width:95px" onchange="renderTracker()"><option value="cards">Cards</option><option value="table">Table</option></select>
         </div>
         <div class="sg" style="margin-bottom:12px">
-          <div class="sc"><div class="sl">Total sale</div><div class="sv iv" id="tr-tot">$0</div></div>
+          <div class="sc admin-only" id="tr-tot-card"><div class="sl">Total sale</div><div class="sv iv" id="tr-tot">$0</div></div>
           <div class="sc"><div class="sl">Total deposited</div><div class="sv" style="color:var(--ac)" id="tr-dep">$0</div></div>
           <div class="sc"><div class="sl">Customer balance due</div><div class="sv bdue" id="tr-bal">$0</div></div>
           <div class="sc"><div class="sl">Agency not paid</div><div class="sv" style="color:var(--wn)" id="tr-agpend">$0</div></div>
@@ -1371,6 +1371,8 @@ function renderTracker(){
   if(q)list=list.filter(function(c){return c.name.toLowerCase().includes(q.toLowerCase())||(c.inv||'').toLowerCase().includes(q.toLowerCase());});
   var totSale=0,totDep=0,totBal=0,totAgPend=0,doneCnt=0,oweCnt=0;
   list.forEach(function(c){var cc=custCalc(c);totSale+=cc.sale;totDep+=cc.deposited;if(cc.allDone)doneCnt++;else{oweCnt++;totBal+=cc.balance;}if(!cc.agencyDone)totAgPend+=Math.max(0,cc.payAg-cc.agPaid);});
+  var totCard=document.getElementById('tr-tot-card');
+  if(totCard)totCard.style.display=currentRole==='admin'?'':'none';
   document.getElementById('tr-tot').textContent=fU(totSale);
   document.getElementById('tr-dep').textContent=fU(totDep);
   document.getElementById('tr-bal').textContent=fU(totBal);
