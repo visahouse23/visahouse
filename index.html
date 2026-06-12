@@ -376,13 +376,16 @@ tr:hover td{background:rgba(255,255,255,.02)}
           <input type="text" id="t-q" class="si" style="width:130px" placeholder="Name/invoice..." oninput="renderTracker()">
           <select id="t-view" class="si" style="width:95px" onchange="renderTracker()"><option value="cards">Cards</option><option value="table">Table</option></select>
         </div>
-        <div class="sg" style="margin-bottom:12px">
-          <div class="sc admin-only" id="tr-tot-card"><div class="sl">Total sale</div><div class="sv iv" id="tr-tot">$0</div></div>
+        <div class="sg admin-only" id="tr-stats" style="margin-bottom:12px">
+          <div class="sc" id="tr-tot-card"><div class="sl">Total sale</div><div class="sv iv" id="tr-tot">$0</div></div>
           <div class="sc"><div class="sl">Total deposited</div><div class="sv" style="color:var(--ac)" id="tr-dep">$0</div></div>
           <div class="sc"><div class="sl">Customer balance due</div><div class="sv bdue" id="tr-bal">$0</div></div>
           <div class="sc"><div class="sl">Agency not paid</div><div class="sv" style="color:var(--wn)" id="tr-agpend">$0</div></div>
           <div class="sc"><div class="sl">Fully paid</div><div class="sv bdone" id="tr-done">0</div><div class="ss">customers</div></div>
           <div class="sc"><div class="sl">Still owing</div><div class="sv bdue" id="tr-owe">0</div><div class="ss">customers</div></div>
+        </div>
+        <div id="tr-staff-summary" style="display:none;background:var(--bg2);border:1px solid var(--br);border-radius:var(--rd);padding:10px 14px;margin-bottom:12px;font-size:13px">
+          <span style="color:var(--tx2)">Pending customers: </span><span class="bdue" id="tr-owe-staff" style="font-weight:700">0</span>
         </div>
         <div id="tracker-container"></div>
       </div>
@@ -705,10 +708,23 @@ function loadLocal(){
 function loadFromFirebase(callback){
   showSyncStatus('loading');
   fbGet(function(err,data){
-    if(err||!data){
-      console.warn('Firebase load error:',err);
-      showSyncStatus('offline');
-      showToast('⚠ Firebase blocked. Go to Firebase → Realtime Database → Rules → set both to true → Publish');
+    if(err){
+      var msg=err.message||'';
+      if(msg.indexOf('fetch')!==-1){
+        // Network error - likely file:// or CORS
+        showSyncStatus('offline');
+        console.warn('Firebase: network error - open via https:// URL');
+      } else {
+        // Permission denied - rules not published
+        showSyncStatus('offline');
+        showToast('⚠ Firebase rules blocked. In Firebase → Realtime Database → Rules → publish read/write:true');
+      }
+      if(callback)callback();
+      return;
+    }
+    if(!data){
+      // Empty database - first time use, that's fine
+      showSyncStatus('synced');
       if(callback)callback();
       return;
     }
@@ -856,7 +872,7 @@ function showSyncStatus(state){
     saving:  {text:'💾 Saving...', bg:'rgba(79,142,247,.15)', color:'var(--ac)'},
     saved:   {text:'✓ Saved', bg:'rgba(56,201,138,.15)', color:'var(--ac2)'},
     synced:  {text:'✓ Synced', bg:'rgba(56,201,138,.15)', color:'var(--ac2)'},
-    offline: {text:'⚠ Offline', bg:'rgba(240,160,75,.15)', color:'var(--wn)'},
+    offline: {text:'⚠ No Firebase', bg:'rgba(240,160,75,.15)', color:'var(--wn)'},
     error:   {text:'✗ Error', bg:'rgba(224,85,85,.15)', color:'var(--dg)'}
   };
   var s=states[state]||states.synced;
@@ -1371,8 +1387,13 @@ function renderTracker(){
   if(q)list=list.filter(function(c){return c.name.toLowerCase().includes(q.toLowerCase())||(c.inv||'').toLowerCase().includes(q.toLowerCase());});
   var totSale=0,totDep=0,totBal=0,totAgPend=0,doneCnt=0,oweCnt=0;
   list.forEach(function(c){var cc=custCalc(c);totSale+=cc.sale;totDep+=cc.deposited;if(cc.allDone)doneCnt++;else{oweCnt++;totBal+=cc.balance;}if(!cc.agencyDone)totAgPend+=Math.max(0,cc.payAg-cc.agPaid);});
-  var totCard=document.getElementById('tr-tot-card');
-  if(totCard)totCard.style.display=currentRole==='admin'?'':'none';
+  // Show full stats for admin, simple count for staff
+  var statsEl=document.getElementById('tr-stats');
+  var staffSummEl=document.getElementById('tr-staff-summary');
+  if(statsEl)statsEl.style.display=currentRole==='admin'?'':'none';
+  if(staffSummEl)staffSummEl.style.display=currentRole==='staff'?'block':'none';
+  var oweStaff=document.getElementById('tr-owe-staff');
+  if(oweStaff)oweStaff.textContent=oweCnt;
   document.getElementById('tr-tot').textContent=fU(totSale);
   document.getElementById('tr-dep').textContent=fU(totDep);
   document.getElementById('tr-bal').textContent=fU(totBal);
@@ -1429,10 +1450,7 @@ function renderTracker(){
           +'<div class="cust-col"><div class="cust-col-label">Deposited</div><div class="cust-col-val" style="color:var(--ac)">'+fU(cc.deposited)+'</div></div>'
           +'<div class="cust-col"><div class="cust-col-label">Balance left</div><div class="cust-col-val '+(cc.custDone?'bdone':'bdue')+'">'+(cc.custDone?'Done':fU(cc.balance))+'</div></div>'
           +'<div class="cust-col"><div class="cust-col-label">Agency cost</div><div class="cust-col-val ov">'+fU(c.cost||0)+'</div></div>'
-          +'<div class="cust-col"><div class="cust-col-label">Agency paid</div>'
-          +'<div class="cust-col-val '+(cc.agencyDone?'bdone':cc.agPaid>0?'pla':'bdue')+'">'
-          +fU(cc.agPaid)+(cc.agencyDone?' ✓':(c.cost>0?' / '+fU(c.cost||0):''))
-          +'</div></div>'
+          +'<div class="cust-col"><div class="cust-col-label">Agency paid</div><div class="cust-col-val '+(cc.agencyDone?'bdone':cc.agPaid>0?'pla':'bdue')+'">'+fU(cc.agPaid)+(cc.agencyDone?' ✓':'')+'</div></div>'
           +(currentRole==='admin'?'<div class="cust-col"><div class="cust-col-label">Profit</div><div class="cust-col-val prv">'+fU(cc.profit)+'</div></div><div class="cust-col"><div class="cust-col-label">Comm ('+CFG.commRate+'%)</div><div class="cust-col-val cv">'+fU(cc.comm)+'</div></div>':'');
         body.innerHTML+=
           '<div class="prog-row"><span class="prog-label">Customer paid</span><div class="prog-bar-wrap"><div class="prog-bar-fill" style="width:'+pct+'%;background:'+pcol+'"></div></div><span class="prog-pct" style="color:'+pcol+'">'+pct+'%</span></div>'
