@@ -1429,8 +1429,6 @@ function renderTracker(){
           +'<div class="cust-col"><div class="cust-col-label">Deposited</div><div class="cust-col-val" style="color:var(--ac)">'+fU(cc.deposited)+'</div></div>'
           +'<div class="cust-col"><div class="cust-col-label">Balance left</div><div class="cust-col-val '+(cc.custDone?'bdone':'bdue')+'">'+(cc.custDone?'Done':fU(cc.balance))+'</div></div>'
           +'<div class="cust-col"><div class="cust-col-label">Agency cost</div><div class="cust-col-val ov">'+fU(c.cost||0)+'</div></div>'
-          >
-
           +'<div class="cust-col"><div class="cust-col-label">Agency paid</div>'
           +'<div class="cust-col-val '+(cc.agencyDone?'bdone':cc.agPaid>0?'pla':'bdue')+'">'
           +fU(cc.agPaid)+(cc.agencyDone?' ✓':(c.cost>0?' / '+fU(c.cost||0):''))
